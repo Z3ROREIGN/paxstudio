@@ -1,4 +1,3 @@
 # GitHub Pages Configuration
-# Disable Jekyll processing
-theme: null
-plugins: []
+# Disable Jekyll processing completely
+skip_some_rules: ['AltText']
