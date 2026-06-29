@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pagamento - PaxStudio</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-brand">
+                <a href="index.html"><h1>PaxStudio</h1></a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Payment Container -->
+    <div class="payment-container">
+        <div class="container">
+            <div class="payment-wrapper">
+                <!-- Order Summary -->
+                <div class="order-summary">
+                    <h2>Resumo do Pedido</h2>
+                    <div class="summary-card">
+                        <div class="summary-item">
+                            <span>Arquivo:</span>
+                            <span id="summaryFileName">-</span>
+                        </div>
+                        <div class="summary-item">
+                            <span>Tamanho:</span>
+                            <span id="summaryFileSize">-</span>
+                        </div>
+                        <div class="summary-item">
+                            <span>Tipo de Serviço:</span>
+                            <span id="summaryServiceType">-</span>
+                        </div>
+                        <div class="summary-divider"></div>
+                        <div class="summary-item total">
+                            <span>Total:</span>
+                            <span id="summaryTotal" class="price">R$ 0,00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Payment Methods -->
+                <div class="payment-methods">
+                    <h2>Método de Pagamento</h2>
+                    
+                    <!-- MisticPay -->
+                    <div class="payment-method">
+                        <input type="radio" id="mistickpay" name="payment" value="mistickpay" checked>
+                        <label for="mistickpay" class="method-label">
+                            <div class="method-header">
+                                <span class="method-name">MisticPay</span>
+                                <span class="method-icon">💳</span>
+                            </div>
+                            <p class="method-description">Pagamento seguro via cartão de crédito/débito</p>
+                        </label>
+                    </div>
+
+                    <!-- PIX -->
+                    <div class="payment-method">
+                        <input type="radio" id="pix" name="payment" value="pix">
+                        <label for="pix" class="method-label">
+                            <div class="method-header">
+                                <span class="method-name">PIX</span>
+                                <span class="method-icon">📱</span>
+                            </div>
+                            <p class="method-description">Transferência instantânea via PIX</p>
+                        </label>
+                    </div>
+
+                    <!-- Boleto -->
+                    <div class="payment-method">
+                        <input type="radio" id="boleto" name="payment" value="boleto">
+                        <label for="boleto" class="method-label">
+                            <div class="method-header">
+                                <span class="method-name">Boleto Bancário</span>
+                                <span class="method-icon">📄</span>
+                            </div>
+                            <p class="method-description">Pagamento via boleto bancário</p>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Payment Form -->
+                <div class="payment-form">
+                    <h2>Dados do Pagamento</h2>
+                    <form id="paymentForm">
+                        <div class="form-group">
+                            <label for="cardName">Nome do Titular</label>
+                            <input type="text" id="cardName" name="cardName" required placeholder="Como aparece no cartão">
+                        </div>
+                        <div class="form-group">
+                            <label for="cardEmail">Email</label>
+                            <input type="email" id="cardEmail" name="cardEmail" required placeholder="seu@email.com">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="cardNumber">Número do Cartão</label>
+                                <input type="text" id="cardNumber" name="cardNumber" placeholder="0000 0000 0000 0000" maxlength="19">
+                            </div>
+                            <div class="form-group">
+                                <label for="cardCVV">CVV</label>
+                                <input type="text" id="cardCVV" name="cardCVV" placeholder="000" maxlength="4">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="cardExpiry">Validade</label>
+                                <input type="text" id="cardExpiry" name="cardExpiry" placeholder="MM/YY" maxlength="5">
+                            </div>
+                            <div class="form-group">
+                                <label for="cardInstallments">Parcelamento</label>
+                                <select id="cardInstallments" name="cardInstallments">
+                                    <option value="1">1x sem juros</option>
+                                    <option value="2">2x sem juros</option>
+                                    <option value="3">3x sem juros</option>
+                                    <option value="6">6x com juros</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group checkbox">
+                            <input type="checkbox" id="terms" name="terms" required>
+                            <label for="terms">Concordo com os termos e condições</label>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-large btn-block">Pagar Agora</button>
+                        <p class="payment-footer">Seu pagamento é seguro e criptografado</p>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Processing Modal -->
+    <div id="processingModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="spinner"></div>
+            <h3>Processando Pagamento...</h3>
+            <p>Por favor, aguarde enquanto processamos sua transação</p>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <script src="js/payment.js"></script>
+</body>
+</html>
