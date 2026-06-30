@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - PaxStudio</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-brand">
+                <a href="index.html"><h1>PaxStudio</h1></a>
+            </div>
+            <div class="navbar-user">
+                <span id="userName">Usuário</span>
+                <button id="logoutBtn" class="btn btn-secondary">Sair</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Dashboard Container -->
+    <div class="dashboard-container">
+        <div class="container">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <div class="sidebar-menu">
+                    <a href="#" class="menu-item active" data-section="upload">
+                        <span class="icon">📤</span>
+                        <span>Upload</span>
+                    </a>
+                    <a href="#" class="menu-item" data-section="tickets">
+                        <span class="icon">🎫</span>
+                        <span>Meus Tickets</span>
+                    </a>
+                    <a href="#" class="menu-item" data-section="chat">
+                        <span class="icon">💬</span>
+                        <span>Chat</span>
+                    </a>
+                    <a href="#" class="menu-item" data-section="admin">
+                        <span class="icon">⚙️</span>
+                        <span>Admin</span>
+                    </a>
+                </div>
+            </aside>
+
+            <!-- Main Content -->
+            <main class="dashboard-content">
+                <!-- Upload Section -->
+                <section id="upload-section" class="section active">
+                    <h2>Enviar Arquivo para Suporte</h2>
+                    <div class="upload-card">
+                        <div class="upload-area" id="uploadArea">
+                            <div class="upload-icon">📁</div>
+                            <h3>Arraste seu arquivo .ZIP aqui</h3>
+                            <p>ou clique para selecionar</p>
+                            <input type="file" id="fileInput" accept=".zip" style="display: none;">
+                        </div>
+                        <div id="fileInfo" class="file-info" style="display: none;">
+                            <div class="file-details">
+                                <span class="file-icon">📦</span>
+                                <div>
+                                    <p id="fileName" class="file-name"></p>
+                                    <p id="fileSize" class="file-size"></p>
+                                </div>
+                            </div>
+                            <button id="removeFile" class="btn btn-secondary">Remover</button>
+                        </div>
+                    </div>
+
+                    <!-- Pricing Info -->
+                    <div id="pricingInfo" class="pricing-info" style="display: none;">
+                        <h3>Valor da Correção</h3>
+                        <div class="price-display">
+                            <span class="price-value" id="priceValue">R$ 0,00</span>
+                            <span class="price-info" id="priceInfo"></span>
+                        </div>
+                        <button id="proceedBtn" class="btn btn-primary btn-large">Prosseguir para Pagamento</button>
+                    </div>
+                </section>
+
+                <!-- Tickets Section -->
+                <section id="tickets-section" class="section">
+                    <h2>Meus Tickets</h2>
+                    <div id="ticketsList" class="tickets-list">
+                        <p class="empty-state">Nenhum ticket encontrado</p>
+                    </div>
+                </section>
+
+                <!-- Chat Section -->
+                <section id="chat-section" class="section">
+                    <h2>Chat com Suporte</h2>
+                    <div class="chat-container">
+                        <div id="chatMessages" class="chat-messages">
+                            <p class="empty-state">Selecione um ticket para iniciar o chat</p>
+                        </div>
+                        <div class="chat-input-area" style="display: none;">
+                            <input type="text" id="chatInput" placeholder="Digite sua mensagem...">
+                            <button id="sendBtn" class="btn btn-primary">Enviar</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Admin Section -->
+                <section id="admin-section" class="section">
+                    <h2>Painel Administrativo</h2>
+                    <div class="admin-tabs">
+                        <button class="admin-tab active" data-tab="admin-tickets">Tickets</button>
+                        <button class="admin-tab" data-tab="admin-users">Usuários</button>
+                        <button class="admin-tab" data-tab="admin-settings">Configurações</button>
+                    </div>
+
+                    <!-- Admin Tickets -->
+                    <div id="admin-tickets" class="admin-tab-content active">
+                        <h3>Gerenciar Tickets</h3>
+                        <div id="adminTicketsList" class="admin-list">
+                            <p class="empty-state">Nenhum ticket encontrado</p>
+                        </div>
+                    </div>
+
+                    <!-- Admin Users -->
+                    <div id="admin-users" class="admin-tab-content">
+                        <h3>Gerenciar Usuários</h3>
+                        <div id="adminUsersList" class="admin-list">
+                            <p class="empty-state">Nenhum usuário encontrado</p>
+                        </div>
+                    </div>
+
+                    <!-- Admin Settings -->
+                    <div id="admin-settings" class="admin-tab-content">
+                        <h3>Configurações do Sistema</h3>
+                        <div class="settings-form">
+                            <div class="form-group">
+                                <label>Taxa por MB</label>
+                                <input type="number" id="rateMB" value="1.00" step="0.01">
+                            </div>
+                            <div class="form-group">
+                                <label>Taxa Fixa (até 1MB)</label>
+                                <input type="number" id="rateFixed" value="3.50" step="0.01">
+                            </div>
+                            <button id="saveSettings" class="btn btn-primary">Salvar Configurações</button>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <script src="js/storage.js"></script>
+    <script src="js/dashboard.js"></script>
+</body>
+</html>
