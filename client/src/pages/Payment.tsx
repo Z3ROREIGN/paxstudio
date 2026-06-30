@@ -3,17 +3,17 @@ import { useLocation, useRoute } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { trpc } from "@/lib/trpc";
 import { CreditCard, CheckCircle, AlertCircle, Loader2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Payment() {
   const { user, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
-  const [match, params] = useRoute("/payment/:ticketId");
-  const ticketId = params?.ticketId;
+  const [, params] = useRoute("/payment/:ticketId");
+  const ticketId = params?.ticketId ? parseInt(params.ticketId, 10) : null;
 
   const [isLoading, setIsLoading] = useState(false);
-  const [ticketData, setTicketData] = useState<any>(null);
   const [paymentStatus, setPaymentStatus] = useState<"pending" | "processing" | "completed" | "failed">("pending");
 
   // Redirect if not authenticated
@@ -23,32 +23,37 @@ export default function Payment() {
     }
   }, [user, authLoading, setLocation]);
 
-  // Load ticket data
-  useEffect(() => {
-    if (ticketId && user) {
-      // TODO: Fetch ticket data from API
-      setTicketData({
-        id: ticketId,
-        fileName: "project.zip",
-        fileSize: 2048576, // 2 MB
-        amount: 2.0,
-        status: "pending",
-      });
-    }
-  }, [ticketId, user]);
+  // Fetch ticket data from API
+  const { data: ticketData, isLoading: ticketLoading, error: ticketError } = trpc.tickets.get.useQuery(
+    { id: ticketId! },
+    { enabled: !!ticketId && !!user }
+  );
+
+  const initiatePaymentMutation = trpc.tickets.initiatePayment.useMutation();
+  const confirmPaymentMutation = trpc.tickets.confirmPayment.useMutation();
 
   const handlePayment = async () => {
-    if (!ticketId) return;
+    if (!ticketId || !ticketData) return;
 
     setIsLoading(true);
     setPaymentStatus("processing");
 
     try {
-      // TODO: Integrate with MisticPay API
-      // For now, simulate payment processing
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Initiate payment via MisticPay
+      const payment = await initiatePaymentMutation.mutateAsync({ ticketId });
 
-      // Simulate successful payment
+      // If a payment URL is returned, redirect to it
+      if (payment.paymentUrl && payment.paymentUrl.startsWith("http")) {
+        window.location.href = payment.paymentUrl;
+        return;
+      }
+
+      // Otherwise confirm payment directly (for mock/test mode)
+      await confirmPaymentMutation.mutateAsync({
+        ticketId,
+        paymentId: payment.paymentId,
+      });
+
       setPaymentStatus("completed");
       toast.success("Payment successful! Your support chat is now active.");
 
@@ -56,9 +61,9 @@ export default function Payment() {
       setTimeout(() => {
         setLocation(`/chat/${ticketId}`);
       }, 2000);
-    } catch (error) {
+    } catch (error: any) {
       setPaymentStatus("failed");
-      toast.error("Payment failed. Please try again.");
+      toast.error(error?.message || "Payment failed. Please try again.");
       console.error(error);
     } finally {
       setIsLoading(false);
@@ -73,13 +78,30 @@ export default function Payment() {
     );
   }
 
-  if (!ticketData) {
+  if (ticketLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
       </div>
     );
   }
+
+  if (ticketError || !ticketData) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+          <p className="text-white text-lg font-semibold mb-2">Ticket not found</p>
+          <p className="text-slate-400 mb-4">The ticket you are looking for does not exist or you do not have access.</p>
+          <Button onClick={() => setLocation("/dashboard")} className="bg-blue-600 hover:bg-blue-700 text-white">
+            Back to Dashboard
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const amount = parseFloat(ticketData.amount);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -109,7 +131,7 @@ export default function Payment() {
         {/* Order Summary */}
         <Card className="border-slate-700 bg-slate-800/50 backdrop-blur-sm mb-8 p-6">
           <h3 className="text-lg font-semibold text-white mb-4">Order Summary</h3>
-          
+
           <div className="space-y-4">
             <div className="flex justify-between items-center pb-4 border-b border-slate-700">
               <div>
@@ -118,12 +140,12 @@ export default function Payment() {
                   File size: {(ticketData.fileSize / 1024 / 1024).toFixed(2)} MB
                 </p>
               </div>
-              <p className="text-white font-semibold">R$ {ticketData.amount.toFixed(2)}</p>
+              <p className="text-white font-semibold">R$ {amount.toFixed(2)}</p>
             </div>
 
             <div className="flex justify-between items-center pt-4">
               <p className="text-white font-semibold">Total</p>
-              <p className="text-2xl font-bold text-blue-400">R$ {ticketData.amount.toFixed(2)}</p>
+              <p className="text-2xl font-bold text-blue-400">R$ {amount.toFixed(2)}</p>
             </div>
           </div>
         </Card>
@@ -174,16 +196,27 @@ export default function Payment() {
         <div className="space-y-4">
           <Button
             onClick={handlePayment}
-            disabled={isLoading || paymentStatus === "completed"}
+            disabled={isLoading || paymentStatus === "completed" || ticketData.paymentStatus === "confirmed"}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white py-6 text-lg font-semibold"
           >
             {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            {paymentStatus === "completed"
+            {ticketData.paymentStatus === "confirmed"
+              ? "Payment Already Confirmed"
+              : paymentStatus === "completed"
               ? "Payment Complete"
               : isLoading
               ? "Processing..."
-              : `Pay R$ ${ticketData.amount.toFixed(2)}`}
+              : `Pay R$ ${amount.toFixed(2)}`}
           </Button>
+
+          {ticketData.paymentStatus === "confirmed" && (
+            <Button
+              onClick={() => setLocation(`/chat/${ticketId}`)}
+              className="w-full bg-green-600 hover:bg-green-700 text-white"
+            >
+              Go to Chat
+            </Button>
+          )}
 
           <Button
             onClick={() => setLocation("/dashboard")}

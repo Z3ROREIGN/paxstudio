@@ -20,11 +20,17 @@ export function registerWebhookRoutes(app: Express) {
         return;
       }
 
-      // Update ticket payment status
+      // Update ticket payment status in database
       if (payload.status === "completed" && payload.metadata?.ticketId) {
-        const ticketId = payload.metadata.ticketId;
-        // TODO: Update ticket payment status to "completed" in database
+        const ticketId = parseInt(payload.metadata.ticketId, 10);
+        const paymentId = payload.id || payload.paymentId || "";
+        await db.updateTicketPayment(ticketId, paymentId, "confirmed");
         console.log(`[Webhook] Payment confirmed for ticket ${ticketId}`);
+      } else if (payload.status === "failed" && payload.metadata?.ticketId) {
+        const ticketId = parseInt(payload.metadata.ticketId, 10);
+        const paymentId = payload.id || payload.paymentId || "";
+        await db.updateTicketPayment(ticketId, paymentId, "failed");
+        console.log(`[Webhook] Payment failed for ticket ${ticketId}`);
       }
 
       res.json({ success: true });

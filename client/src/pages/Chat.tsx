@@ -1,32 +1,19 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation, useRoute } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { Send, Paperclip, Image, Download, ArrowLeft, Loader2 } from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { Send, Paperclip, AlertCircle, ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-
-interface ChatMessage {
-  id: number;
-  userId: number;
-  userName: string;
-  message: string;
-  type: "text" | "image" | "file";
-  filePath?: string;
-  fileName?: string;
-  timestamp: Date;
-}
 
 export default function Chat() {
   const { user, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
-  const [match, params] = useRoute("/chat/:ticketId");
-  const ticketId = params?.ticketId;
+  const [, params] = useRoute("/chat/:ticketId");
+  const ticketId = params?.ticketId ? parseInt(params.ticketId, 10) : null;
 
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [messageInput, setMessageInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -37,55 +24,46 @@ export default function Chat() {
     }
   }, [user, authLoading, setLocation]);
 
-  // Auto-scroll to bottom
+  // Fetch messages from API
+  const {
+    data: messages,
+    isLoading: messagesLoading,
+    error: messagesError,
+    refetch: refetchMessages,
+  } = trpc.chat.messages.useQuery(
+    { ticketId: ticketId! },
+    {
+      enabled: !!ticketId && !!user,
+      refetchInterval: 5000, // Poll every 5 seconds for new messages
+    }
+  );
+
+  const sendMessageMutation = trpc.chat.sendMessage.useMutation({
+    onSuccess: () => {
+      setMessageInput("");
+      setSelectedFile(null);
+      refetchMessages();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to send message");
+    },
+  });
+
+  // Auto-scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Load chat messages
-  useEffect(() => {
-    if (ticketId && user) {
-      // TODO: Fetch chat messages from API
-      // For now, add a welcome message
-      setMessages([
-        {
-          id: 1,
-          userId: 2,
-          userName: "Support Team",
-          message: "Hello! Thank you for choosing PaxStudio. Our team will review your code shortly.",
-          type: "text",
-          timestamp: new Date(),
-        },
-      ]);
-    }
-  }, [ticketId, user]);
-
   const handleSendMessage = async () => {
-    if (!messageInput.trim() && !selectedFile) return;
-
-    setIsLoading(true);
+    if (!messageInput.trim() || !ticketId) return;
 
     try {
-      // TODO: Send message to API
-      const newMessage: ChatMessage = {
-        id: messages.length + 1,
-        userId: user?.id || 0,
-        userName: user?.name || "User",
-        message: messageInput,
-        type: selectedFile ? "file" : "text",
-        fileName: selectedFile?.name,
-        timestamp: new Date(),
-      };
-
-      setMessages([...messages, newMessage]);
-      setMessageInput("");
-      setSelectedFile(null);
-      toast.success("Message sent!");
-    } catch (error) {
-      toast.error("Failed to send message");
-      console.error(error);
-    } finally {
-      setIsLoading(false);
+      await sendMessageMutation.mutateAsync({
+        ticketId,
+        message: messageInput.trim(),
+      });
+    } catch {
+      // Error handled in onError callback
     }
   };
 
@@ -100,6 +78,23 @@ export default function Chat() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
+      </div>
+    );
+  }
+
+  if (messagesError) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+          <p className="text-white text-lg font-semibold mb-2">Access Denied</p>
+          <p className="text-slate-400 mb-4">
+            {messagesError.message || "You do not have access to this chat. Payment may be required."}
+          </p>
+          <Button onClick={() => setLocation("/dashboard")} className="bg-blue-600 hover:bg-blue-700 text-white">
+            Back to Dashboard
+          </Button>
+        </div>
       </div>
     );
   }
@@ -127,37 +122,48 @@ export default function Chat() {
 
       {/* Chat Messages */}
       <div className="flex-1 overflow-y-auto max-w-4xl mx-auto w-full px-4 py-6">
-        <div className="space-y-4">
-          {messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`flex ${msg.userId === user?.id ? "justify-end" : "justify-start"}`}
-            >
-              <div
-                className={`max-w-xs lg:max-w-md px-4 py-3 rounded-lg ${
-                  msg.userId === user?.id
-                    ? "bg-blue-600 text-white rounded-br-none"
-                    : "bg-slate-700 text-slate-100 rounded-bl-none"
-                }`}
-              >
-                {msg.userId !== user?.id && (
-                  <p className="text-xs font-semibold mb-1 opacity-75">{msg.userName}</p>
-                )}
-                <p className="text-sm break-words">{msg.message}</p>
-                {msg.fileName && (
-                  <div className="mt-2 flex items-center gap-2 text-xs">
-                    <Paperclip className="w-3 h-3" />
-                    <span>{msg.fileName}</span>
-                  </div>
-                )}
-                <p className="text-xs opacity-50 mt-1">
-                  {msg.timestamp.toLocaleTimeString()}
-                </p>
+        {messagesLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {(!messages || messages.length === 0) && (
+              <div className="text-center py-12">
+                <p className="text-slate-400">No messages yet. Start the conversation!</p>
               </div>
-            </div>
-          ))}
-          <div ref={messagesEndRef} />
-        </div>
+            )}
+            {messages?.map((msg) => (
+              <div
+                key={msg.id}
+                className={`flex ${msg.userId === user?.id ? "justify-end" : "justify-start"}`}
+              >
+                <div
+                  className={`max-w-xs lg:max-w-md px-4 py-3 rounded-lg ${
+                    msg.userId === user?.id
+                      ? "bg-blue-600 text-white rounded-br-none"
+                      : "bg-slate-700 text-slate-100 rounded-bl-none"
+                  }`}
+                >
+                  {msg.userId !== user?.id && (
+                    <p className="text-xs font-semibold mb-1 opacity-75">Support Team</p>
+                  )}
+                  <p className="text-sm break-words">{msg.content}</p>
+                  {msg.fileName && (
+                    <div className="mt-2 flex items-center gap-2 text-xs">
+                      <Paperclip className="w-3 h-3" />
+                      <span>{msg.fileName}</span>
+                    </div>
+                  )}
+                  <p className="text-xs opacity-50 mt-1">
+                    {new Date(msg.createdAt).toLocaleTimeString()}
+                  </p>
+                </div>
+              </div>
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
+        )}
       </div>
 
       {/* Input Area */}
@@ -188,17 +194,17 @@ export default function Chat() {
               placeholder="Type your message..."
               value={messageInput}
               onChange={(e) => setMessageInput(e.target.value)}
-              onKeyPress={(e) => {
+              onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
                   handleSendMessage();
                 }
               }}
-              disabled={isLoading}
+              disabled={sendMessageMutation.isPending}
               className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-500 flex-1"
             />
 
-            {/* File Upload Buttons */}
+            {/* File Upload Button */}
             <input
               type="file"
               onChange={handleFileSelect}
@@ -212,7 +218,7 @@ export default function Chat() {
               variant="outline"
               size="icon"
               className="border-slate-600 text-slate-300 hover:bg-slate-700"
-              disabled={isLoading}
+              disabled={sendMessageMutation.isPending}
             >
               <Paperclip className="w-4 h-4" />
             </Button>
@@ -220,10 +226,10 @@ export default function Chat() {
             {/* Send Button */}
             <Button
               onClick={handleSendMessage}
-              disabled={isLoading || (!messageInput.trim() && !selectedFile)}
+              disabled={sendMessageMutation.isPending || !messageInput.trim()}
               className="bg-blue-600 hover:bg-blue-700 text-white px-6"
             >
-              {isLoading ? (
+              {sendMessageMutation.isPending ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <Send className="w-4 h-4" />
@@ -233,7 +239,7 @@ export default function Chat() {
 
           {/* Help Text */}
           <p className="text-xs text-slate-500 mt-2">
-            Press Enter to send, Shift+Enter for new line
+            Press Enter to send
           </p>
         </div>
       </div>

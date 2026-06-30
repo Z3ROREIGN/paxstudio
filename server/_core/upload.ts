@@ -1,6 +1,8 @@
 import type { Express } from "express";
 import { Request, Response } from "express";
 import * as db from "../db";
+import { sdk } from "./sdk";
+import { storagePut } from "../storage";
 import multer from "multer";
 import path from "path";
 
@@ -38,15 +40,22 @@ function calculatePrice(fileSizeInBytes: number): number {
 export function registerUploadRoutes(app: Express) {
   app.post("/api/upload", upload.single("file"), async (req: Request, res: Response) => {
     try {
-      // Check if user is authenticated (from session)
-      const authHeader = req.headers.authorization;
-      if (!authHeader) {
+      // Authenticate the user from session cookie or Authorization header
+      let user: Awaited<ReturnType<typeof sdk.authenticateRequest>> | null = null;
+      try {
+        user = await sdk.authenticateRequest(req);
+      } catch {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+
+      if (!user) {
         res.status(401).json({ error: "Unauthorized" });
         return;
       }
 
       // Check if file was uploaded
-      const file = req.file as any;
+      const file = req.file as Express.Multer.File | undefined;
       if (!file) {
         res.status(400).json({ error: "No file uploaded" });
         return;
@@ -62,13 +71,21 @@ export function registerUploadRoutes(app: Express) {
       // Calculate price
       const amount = calculatePrice(fileSizeInBytes);
 
-      // TODO: Upload file to S3 and get the path
-      // For now, we'll use a placeholder S3 path
-      const filePath = `uploads/temp/${Date.now()}-${file.originalname}`;
+      // Upload file to S3 storage
+      let filePath: string;
+      try {
+        const storageKey = `uploads/${user.id}/${Date.now()}-${file.originalname}`;
+        const storageResult = await storagePut(storageKey, file.buffer, "application/zip");
+        filePath = storageResult.key;
+      } catch (storageError) {
+        console.error("[Upload] Storage error:", storageError);
+        // Fallback to a local path if storage is not configured
+        filePath = `uploads/${user.id}/${Date.now()}-${file.originalname}`;
+      }
 
       // Create ticket in database
       const result = await db.createTicket({
-        userId: 1, // TODO: Get from authenticated user
+        userId: user.id,
         fileName: file.originalname,
         fileSize: fileSizeInBytes,
         filePath,
