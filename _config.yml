@@ -1,0 +1,10 @@
+# GitHub Pages Configuration
+# Disable Jekyll processing
+markdown: kramdown
+kramdown:
+  input: GFM
+  hard_wrap: false
+exclude:
+  - /vendor/
+  - Gemfile
+  - Gemfile.lock
